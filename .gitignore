@@ -1,0 +1,19 @@
+node_modules
+dist
+.env
+.env.local
+*.local
+
+# Legacy files (pre-Vite)
+/store.js
+/app.jsx
+/shell.jsx
+/login.jsx
+/ui.jsx
+/tweaks-panel.jsx
+/ios-frame.jsx
+/styles.css
+/Terso Requisiciones.html
+/pages/*.jsx
+/pages/*.js
+/uploads/
