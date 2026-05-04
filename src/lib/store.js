@@ -1,8 +1,8 @@
 // ============================================================
 // TERSO — Store, seed data, helpers
+// Persistencia: Supabase (vía supabaseRepo). Sin localStorage.
 // ============================================================
-
-const STORAGE_KEY = "terso_requisiciones_v2";
+import SupabaseRepo from './supabaseRepo';
 
 const ROLES = {
   admin: { id: "admin", label: "Administrador", areas: ["piso", "barra", "cocina"], color: "#b09a5b" },
@@ -567,44 +567,75 @@ const DEFAULT_STATE = {
   pagos: SEED_PAGOS,
   audit: SEED_AUDIT,
   inventoryHistory: [],
-  schedules: [],     // populated lazily by seedSchedules() on first load
-  tips: [],          // populated lazily by seedTips() on first load
-  tipPayments: {},   // marcas de "depositado" — keys: `piso:${uid}:${dateISO}` o `kitchen:${uid}:${weekISO}`
+  schedules: [],
+  tips: [],
+  tipPayments: {},
   taskCatalog: SEED_TASKS,
-  taskTemplate: {},  // { 'taskId|dayIdx': userId } — populated lazily
-  taskRecords: [],   // populated lazily
-  session: null, // { userId }
+  taskTemplate: {},
+  taskOverrides: {},
+  taskRecords: [],
+  session: null,
 };
 
-function loadState() {
+function buildSeedState() {
+  return {
+    users: SEED_USERS,
+    proveedores: SEED_PROVEEDORES,
+    products: SEED_PRODUCTS,
+    requisiciones: SEED_REQUISICIONES,
+    facturas: SEED_FACTURAS,
+    pagos: SEED_PAGOS,
+    audit: SEED_AUDIT,
+    inventoryHistory: [],
+    schedules: seedSchedules(),
+    tips: seedTips(),
+    tipPayments: {},
+    taskCatalog: SEED_TASKS,
+    taskTemplate: seedTaskTemplate(SEED_USERS),
+    taskOverrides: {},
+    taskRecords: seedTaskRecords(SEED_USERS),
+    session: null,
+  };
+}
+
+// Carga desde Supabase. Si la tabla `employees` está vacía (primera vez),
+// siembra las tablas con los datos demo y devuelve el estado sembrado.
+async function loadState() {
   try {
-    const raw = localStorage.getItem(STORAGE_KEY);
-    if (!raw) {
-      return { ...DEFAULT_STATE, schedules: seedSchedules(), tips: seedTips(), taskTemplate: seedTaskTemplate(SEED_USERS), taskRecords: seedTaskRecords(SEED_USERS) };
+    const empty = await SupabaseRepo.isEmpty();
+    if (empty) {
+      const seed = buildSeedState();
+      await SupabaseRepo.seedAll(seed);
+      return seed;
     }
-    const parsed = JSON.parse(raw);
+    const loaded = await SupabaseRepo.loadAll();
     return {
-      ...DEFAULT_STATE,
-      ...parsed,
-      schedules: parsed.schedules?.length ? parsed.schedules : seedSchedules(),
-      tips: parsed.tips?.length ? parsed.tips.map(migrateTip) : seedTips(),
-      tipPayments: parsed.tipPayments || {},
-      taskCatalog: parsed.taskCatalog?.length ? parsed.taskCatalog : SEED_TASKS,
-      taskTemplate: parsed.taskTemplate && Object.keys(parsed.taskTemplate).length ? parsed.taskTemplate : seedTaskTemplate(parsed.users || SEED_USERS),
-      taskRecords: parsed.taskRecords?.length ? parsed.taskRecords : seedTaskRecords(parsed.users || SEED_USERS),
-      users: parsed.users?.length >= SEED_USERS.length ? parsed.users : SEED_USERS,
-      proveedores: parsed.proveedores?.[0]?.diasCredito !== undefined ? parsed.proveedores : SEED_PROVEEDORES,
-      requisiciones: parsed.requisiciones?.[0]?.items?.[0]?.qtySolicitada !== undefined ? parsed.requisiciones : SEED_REQUISICIONES,
-      facturas: parsed.facturas?.length ? parsed.facturas : SEED_FACTURAS,
-      pagos: parsed.pagos?.length ? parsed.pagos : SEED_PAGOS,
+      users: loaded.users || [],
+      proveedores: loaded.proveedores || [],
+      products: loaded.products || [],
+      requisiciones: loaded.requisiciones || [],
+      facturas: loaded.facturas || [],
+      pagos: loaded.pagos || [],
+      audit: loaded.audit || [],
+      inventoryHistory: loaded.inventoryHistory || [],
+      schedules: loaded.schedules || [],
+      tips: (loaded.tips || []).map(migrateTip),
+      tipPayments: loaded.tipPayments || {},
+      taskCatalog: loaded.taskCatalog?.length ? loaded.taskCatalog : SEED_TASKS,
+      taskTemplate: loaded.taskTemplate || {},
+      taskOverrides: loaded.taskOverrides || {},
+      taskRecords: loaded.taskRecords || [],
+      session: null,
     };
   } catch (e) {
-    return { ...DEFAULT_STATE, schedules: seedSchedules(), tips: seedTips() };
+    console.error('[TersoStore] loadState failed:', e);
+    throw e;
   }
 }
 
-function saveState(s) {
-  try { localStorage.setItem(STORAGE_KEY, JSON.stringify(s)); } catch (e) {}
+// Persiste cambios entre prev y next a Supabase. La sesión es local-only.
+async function saveState(prev, next) {
+  await SupabaseRepo.saveAll(prev, next);
 }
 
 function uid(prefix = "id") {

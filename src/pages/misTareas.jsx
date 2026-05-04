@@ -11,14 +11,14 @@ import { taskDayIdx, tasksForUserOnDay, findTaskRecord, taskStatusChip } from '.
 const MisTareas = ({ state, setState, currentUser }) => {
   const [dateISO, setDateISO] = useState(TersoStore.toISO(new Date()));
 
-  const dayIdx = window.taskDayIdx(dateISO);
+  const dayIdx = taskDayIdx(dateISO);
   const isMonday = dayIdx === 0;
 
   // Tareas asignadas a este usuario en este día
   const myTasks = useMemo(() => {
     if (isMonday) return [];
-    return window.tasksForUserOnDay(state, currentUser.id, dateISO).map(task => {
-      const record = window.findTaskRecord(state, task.id, currentUser.id, dateISO);
+    return tasksForUserOnDay(state, currentUser.id, dateISO).map(task => {
+      const record = findTaskRecord(state, task.id, currentUser.id, dateISO);
       return { task, record, status: record?.status || "pendiente" };
     });
   }, [state, currentUser.id, dateISO, isMonday]);
@@ -234,8 +234,8 @@ const TaskCard = ({ task, record, status, onMark, onAddNote, onUndo }) => {
       </div>
 
       <div style={{ display: "flex", flexDirection: "column", alignItems: "flex-end", gap: 4 }}>
-        <span className={window.taskStatusChip(status).cls} style={{ fontSize: 10.5 }}>
-          {window.taskStatusChip(status).label}
+        <span className={taskStatusChip(status).cls} style={{ fontSize: 10.5 }}>
+          {taskStatusChip(status).label}
         </span>
         {!isDone && status !== "aprobada" && (
           <button onClick={onAddNote} style={{ background: "transparent", border: 0, fontSize: 11, color: "var(--t-muted)", cursor: "pointer", padding: 0, fontFamily: "var(--f-mono)", letterSpacing: "0.06em" }}>

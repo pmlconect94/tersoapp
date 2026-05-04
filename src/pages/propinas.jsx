@@ -12,7 +12,7 @@
 
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import TersoStore from '../lib/store';
-import { Icon, Button, Segmented, Sheet, Stepper, useToast, PageHead, Toggle } from '../components/ui';
+import { Icon, Button, Segmented, Sheet, Stepper, useToast, PageHead, Toggle, Empty } from '../components/ui';
 
 const Propinas = ({ state, setState, currentUser }) => {
   const [weekKey, setWeekKey] = useState(TersoStore.weekStart(new Date()));

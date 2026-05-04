@@ -253,14 +253,14 @@ const BulkImport = ({ proveedores, onClose, onImport }) => {
     const f = e.target.files[0];
     if (!f) return;
     const isExcel = /\.(xlsx|xls)$/i.test(f.name);
-    if (isExcel && window.XLSX) {
+    if (isExcel && XLSX) {
       const reader = new FileReader();
       reader.onload = () => {
         try {
-          const wb = window.XLSX.read(reader.result, { type: "array" });
+          const wb = XLSX.read(reader.result, { type: "array" });
           const ws = wb.Sheets[wb.SheetNames[0]];
           // Convert to TSV so the existing parser handles it
-          const tsv = window.XLSX.utils.sheet_to_csv(ws, { FS: "\t", blankrows: false });
+          const tsv = XLSX.utils.sheet_to_csv(ws, { FS: "\t", blankrows: false });
           setPasteText(tsv);
           // Auto-process
           const parsed = parsePasted(tsv);
@@ -285,11 +285,11 @@ const BulkImport = ({ proveedores, onClose, onImport }) => {
   };
 
   const downloadTemplate = () => {
-    if (!window.XLSX) {
+    if (!XLSX) {
       alert("Plantilla no disponible — recarga la página.");
       return;
     }
-    const XLSX = window.XLSX;
+    const XLSX = XLSX;
 
     // Sheet 1: Productos (the template they fill in)
     const headers = [["Nombre", "Presentación", "Área", "Proveedor", "Mínimo"]];

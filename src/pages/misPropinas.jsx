@@ -30,7 +30,7 @@ const MisPropinas = ({ state, currentUser }) => {
       }
       const tip = state.tips.find(t => t.date === dateISO);
       if (!tip) return { dateISO, dayIdx, mine: 0, dayPool: 0, hours: 0 };
-      const dist = window.computeDayDistribution(state, dateISO, dayIdx);
+      const dist = computeDayDistribution(state, dateISO, dayIdx);
       const mine = (dist.cocina[currentUser.id] || 0) + (dist.salon[currentUser.id] || 0);
       const pools = TersoStore.computeTipPools(tip);
       const dayPool = myPool === "cocina" ? pools.cocinaPool : pools.salonPool;
@@ -59,7 +59,7 @@ const MisPropinas = ({ state, currentUser }) => {
       let amt = 0;
       dates.forEach((d, idx) => {
         if (idx === 0) return;
-        const dist = window.computeDayDistribution(state, d, idx);
+        const dist = computeDayDistribution(state, d, idx);
         amt += (dist.cocina[currentUser.id] || 0) + (dist.salon[currentUser.id] || 0);
       });
       weeks.unshift({ wk, amt });
@@ -265,5 +265,36 @@ const MisPropinas = ({ state, currentUser }) => {
   );
 };
 
+
+
+// Day distribution helper (shared with Propinas)
+function computeDayDistribution(state, dateISO, dayIdx) {
+  const result = { cocina: {}, salon: {} };
+  const tip = state.tips.find(t => t.date === dateISO);
+  if (!tip) return result;
+  const pools = TersoStore.computeTipPools(tip);
+  const week = TersoStore.weekStart(TersoStore.fromISO(dateISO));
+  const sched = state.schedules.find(s => s.week === week);
+  if (!sched) return result;
+  const cocinaUsers = [];
+  const salonUsers = [];
+  state.users.forEach(u => {
+    if (!u.active || u.role === "admin") return;
+    const shift = sched.entries[`${u.id}|${dayIdx}`];
+    if (shift?.type !== "work") return;
+    const pool = TersoStore.tipPool(u.role);
+    if (pool === "cocina") cocinaUsers.push(u.id);
+    else if (pool === "salon") salonUsers.push(u.id);
+  });
+  if (cocinaUsers.length > 0) {
+    const share = pools.cocinaPool / cocinaUsers.length;
+    cocinaUsers.forEach(uid => { result.cocina[uid] = share; });
+  }
+  if (salonUsers.length > 0) {
+    const share = pools.salonPool / salonUsers.length;
+    salonUsers.forEach(uid => { result.salon[uid] = share; });
+  }
+  return result;
+}
 
 export default MisPropinas;

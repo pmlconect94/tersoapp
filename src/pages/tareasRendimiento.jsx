@@ -22,7 +22,7 @@ const TareasRendimiento = ({ state }) => {
   // Performance por usuario
   const perfRows = useMemo(() => {
     return employees.map(u => {
-      const p = window.computeTaskPerformance(state, u.id, fromISO, toISO);
+      const p = computeTaskPerformance(state, u.id, fromISO, toISO);
       return { user: u, ...p };
     }).filter(r => r.total > 0)
       .sort((a, b) => b.approvalPct - a.approvalPct || b.total - a.total);
@@ -47,7 +47,7 @@ const TareasRendimiento = ({ state }) => {
     const byDay = [0, 1, 2, 3, 4, 5, 6].map(() => ({ done: 0, total: 0 }));
     state.taskRecords.forEach(r => {
       if (r.dateISO < fromISO || r.dateISO > toISO) return;
-      const dayIdx = window.taskDayIdx(r.dateISO);
+      const dayIdx = taskDayIdx(r.dateISO);
       byDay[dayIdx].total++;
       if (r.status === "aprobada" || r.status === "hecha") byDay[dayIdx].done++;
     });

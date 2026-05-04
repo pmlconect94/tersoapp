@@ -98,7 +98,7 @@ const TareasPlantilla = ({ state, setState }) => {
                     </div>
                   </td>
                   {TersoStore.DAYS.slice(1).map(d => {
-                    const applies = window.taskAppliesOnDay(task, d.id);
+                    const applies = taskAppliesOnDay(task, d.id);
                     if (!applies) return <td key={d.id} style={{ textAlign: "center", color: "var(--t-line)", fontSize: 18 }}>—</td>;
                     const userId = state.taskTemplate?.[`${task.id}|${d.id}`] || "";
                     const allowed = employees.filter(u => task.rolesAllowed.includes(u.role));

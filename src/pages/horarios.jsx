@@ -9,6 +9,7 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import TersoStore from '../lib/store';
 import { Icon, Button, Segmented, Sheet, useToast, PageHead } from '../components/ui';
+import { taskAppliesOnDay } from '../lib/tareasHelpers';
 
 const Horarios = ({ state, setState, currentUser, search }) => {
   const today = new Date();
@@ -210,7 +211,7 @@ const Horarios = ({ state, setState, currentUser, search }) => {
                     const shift = week.entries[`${u.id}|${d.id}`];
                     // Count tareas asignadas a este usuario en este día
                     const taskCount = (state.taskCatalog || []).reduce((n, task) => {
-                      if (!window.taskAppliesOnDay || !window.taskAppliesOnDay(task, d.id)) return n;
+                      if (!taskAppliesOnDay || !taskAppliesOnDay(task, d.id)) return n;
                       const assigned = state.taskTemplate?.[`${task.id}|${d.id}`];
                       return assigned === u.id ? n + 1 : n;
                     }, 0);

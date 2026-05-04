@@ -4,6 +4,12 @@ dist
 .env.local
 *.local
 
+# Claude Code local config
+.claude/
+
+# Local one-shot scripts
+_fix_windows.cjs
+
 # Legacy files (pre-Vite)
 /store.js
 /app.jsx

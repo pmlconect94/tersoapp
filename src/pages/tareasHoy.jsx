@@ -14,7 +14,7 @@ const TareasHoy = ({ state, setState, currentUser }) => {
   const [statusFilter, setStatusFilter] = useState("all");
   const [auditing, setAuditing] = useState(null); // record obj
 
-  const dayIdx = window.taskDayIdx(dateISO);
+  const dayIdx = taskDayIdx(dateISO);
   const isMonday = dayIdx === 0;
 
   // Construir filas: una por (task asignada hoy, usuario asignado)
@@ -22,12 +22,12 @@ const TareasHoy = ({ state, setState, currentUser }) => {
     if (isMonday) return [];
     const out = [];
     state.taskCatalog.forEach(task => {
-      if (!window.taskAppliesOnDay(task, dayIdx)) return;
-      const userId = window.taskAssignmentFor(state, task.id, dayIdx, dateISO);
+      if (!taskAppliesOnDay(task, dayIdx)) return;
+      const userId = taskAssignmentFor(state, task.id, dayIdx, dateISO);
       if (!userId) return;
       const user = state.users.find(u => u.id === userId);
       if (!user) return;
-      const record = window.findTaskRecord(state, task.id, userId, dateISO);
+      const record = findTaskRecord(state, task.id, userId, dateISO);
       out.push({ task, user, record, status: record?.status || "pendiente" });
     });
     return out;
@@ -114,7 +114,7 @@ const TareasHoy = ({ state, setState, currentUser }) => {
                 <tbody>
                   {filtered.map((row, i) => {
                     const area = TersoStore.TASK_AREAS[row.task.area];
-                    const chip = window.taskStatusChip(row.status);
+                    const chip = taskStatusChip(row.status);
                     return (
                       <tr key={i}>
                         <td>
@@ -175,9 +175,10 @@ const RejectSheet = ({ record, onSubmit, onCancel }) => {
       <p style={{ fontSize: 13, color: "var(--t-muted)", marginBottom: 14 }}>
         El empleado verá la nota y deberá rehacer la tarea.
       </p>
-      <Field label="Motivo del rechazo">
+      <div>
+        <label className="t-label">Motivo del rechazo</label>
         <textarea value={note} onChange={(e) => setNote(e.target.value)} placeholder="Ej: Quedó sucio el espejo, falta detalle…" rows={4} autoFocus />
-      </Field>
+      </div>
       <div style={{ display: "flex", justifyContent: "flex-end", gap: 8, marginTop: 18 }}>
         <Button variant="ghost" onClick={onCancel}>Cancelar</Button>
         <Button variant="danger" onClick={() => onSubmit(note.trim())} disabled={!note.trim()}>Rechazar</Button>

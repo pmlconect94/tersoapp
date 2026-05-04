@@ -8,6 +8,7 @@
 import React, { useState, useEffect, useRef, useMemo, createContext, useContext } from 'react';
 import TersoStore from '../lib/store';
 import { Icon, PageHead } from '../components/ui';
+import { taskAppliesOnDay } from '../lib/tareasHelpers';
 
 const MiHorario = ({ state, currentUser, setPage }) => {
   const todayISO = TersoStore.toISO(new Date());
@@ -114,7 +115,7 @@ const MiHorario = ({ state, currentUser, setPage }) => {
             const dayDate = TersoStore.addDays(weekKey, i);
             const isToday = dayDate === todayISO;
             const taskCount = (state.taskCatalog || []).reduce((n, task) => {
-              if (!window.taskAppliesOnDay || !window.taskAppliesOnDay(task, d.id)) return n;
+              if (!taskAppliesOnDay || !taskAppliesOnDay(task, d.id)) return n;
               const assigned = state.taskTemplate?.[`${task.id}|${d.id}`];
               return assigned === currentUser.id ? n + 1 : n;
             }, 0);
