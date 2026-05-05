@@ -415,5 +415,29 @@ async function seedAll(state) {
   await saveAll(null, state);
 }
 
-export default { loadAll, isEmpty, saveAll, seedAll };
+// Crea un employees row con role='pending' a partir de un usuario auth recién logueado.
+// Usado en el primer OAuth login cuando el correo aún no existe en employees.
+async function createPendingEmployeeFromAuth(authUser) {
+  const id = 'u_' + Math.random().toString(36).slice(2, 9) + Date.now().toString(36).slice(-3);
+  const meta = authUser.user_metadata || {};
+  const name = meta.full_name || meta.name || (authUser.email || '').split('@')[0];
+  const row = {
+    id,
+    auth_user_id: authUser.id,
+    name,
+    email: authUser.email,
+    role: 'pending',
+    active: true,
+    created: Date.now(),
+  };
+  const { data, error } = await supabase
+    .from('employees')
+    .insert(row)
+    .select()
+    .single();
+  if (error) throw error;
+  return adapters.users.fromRow(data);
+}
+
+export default { loadAll, isEmpty, saveAll, seedAll, createPendingEmployeeFromAuth };
 export { adapters };

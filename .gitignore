@@ -23,3 +23,5 @@ _fix_windows.cjs
 /pages/*.jsx
 /pages/*.js
 /uploads/
+
+.vercel

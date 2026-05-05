@@ -17,7 +17,12 @@ const Usuarios = ({ state, setState, currentUser, search }) => {
       const q = search.toLowerCase();
       list = list.filter(u => u.name.toLowerCase().includes(q) || u.email.toLowerCase().includes(q));
     }
-    return list;
+    // Pendientes de asignar rol siempre arriba, luego alfabético
+    return [...list].sort((a, b) => {
+      if (a.role === 'pending' && b.role !== 'pending') return -1;
+      if (a.role !== 'pending' && b.role === 'pending') return 1;
+      return (a.name || '').localeCompare(b.name || '');
+    });
   }, [state.users, search]);
 
   const addAudit = (action) => ({ id: TersoStore.uid("a"), ts: Date.now(), userId: currentUser.id, action });
@@ -77,8 +82,10 @@ const Usuarios = ({ state, setState, currentUser, search }) => {
             <tbody>
               {filtered.map(u => {
                 const role = TersoStore.ROLES[u.role];
+                const isPending = u.role === 'pending';
                 return (
-                  <tr key={u.id} className="is-clickable" onClick={() => setEditing(u)}>
+                  <tr key={u.id} className="is-clickable" onClick={() => setEditing(u)}
+                    style={isPending ? { background: "rgba(160,121,107,0.07)" } : undefined}>
                     <td>
                       <div style={{ display: "flex", alignItems: "center", gap: 10 }}>
                         <div className="avatar" style={{ width: 32, height: 32, fontSize: 13, background: role.color }}>{u.name[0]}</div>
@@ -119,25 +126,34 @@ const Usuarios = ({ state, setState, currentUser, search }) => {
 
 const UserForm = ({ initial, onSave, onClose }) => {
   const [form, setForm] = useState(initial || { name: "", email: "", role: "piso", active: true });
-  const valid = form.name && form.email.includes("@") && form.role;
-  const role = TersoStore.ROLES[form.role];
+  const isPending = initial?.role === 'pending';
+  // Cuando el admin abre un usuario pending, debe elegir un rol real antes de guardar
+  const valid = form.name && form.email.includes("@") && form.role && form.role !== 'pending';
 
   return (
-    <Sheet open title={initial ? "Editar usuario" : "Nuevo usuario"} subtitle="Define el rol y los permisos" onClose={onClose}
-      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button disabled={!valid} icon="check" onClick={() => onSave(form)}>Guardar</Button></>}>
+    <Sheet open
+      title={isPending ? "Asignar rol" : (initial ? "Editar usuario" : "Nuevo usuario")}
+      subtitle={isPending ? "Este usuario se dio de alta con Google y espera su rol" : "Define el rol y los permisos"}
+      onClose={onClose}
+      footer={<><Button variant="ghost" onClick={onClose}>Cancelar</Button><Button disabled={!valid} icon="check" onClick={() => onSave(form)}>{isPending ? "Asignar rol" : "Guardar"}</Button></>}>
       <div style={{ display: "grid", gap: 14 }}>
         <div>
           <label className="t-label">Nombre completo</label>
-          <input className="t-input" placeholder="Ej. María González" value={form.name} onChange={(e) => setForm({ ...form, name: e.target.value })} autoFocus />
+          <input className="t-input" placeholder="Ej. María González" value={form.name}
+            onChange={(e) => setForm({ ...form, name: e.target.value })}
+            disabled={isPending}
+            autoFocus={!isPending} />
         </div>
         <div>
           <label className="t-label">Correo de acceso</label>
-          <input className="t-input" placeholder="usuario@terso.mx" value={form.email} onChange={(e) => setForm({ ...form, email: e.target.value })} />
+          <input className="t-input" placeholder="usuario@terso.mx" value={form.email}
+            onChange={(e) => setForm({ ...form, email: e.target.value })}
+            disabled={isPending} />
         </div>
         <div>
           <label className="t-label">Rol y permisos</label>
           <div style={{ display: "grid", gridTemplateColumns: "repeat(auto-fit, minmax(160px, 1fr))", gap: 8 }}>
-            {Object.values(TersoStore.ROLES).map(r => (
+            {Object.values(TersoStore.ROLES).filter(r => r.id !== 'pending').map(r => (
               <button key={r.id} type="button" onClick={() => setForm({ ...form, role: r.id })}
                 className="t-card" style={{
                   padding: 14, textAlign: "left", cursor: "pointer",

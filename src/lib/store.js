@@ -5,6 +5,7 @@
 import SupabaseRepo from './supabaseRepo';
 
 const ROLES = {
+  pending: { id: "pending", label: "Pendiente de rol", areas: [], color: "#a0796b" },
   admin: { id: "admin", label: "Administrador", areas: ["piso", "barra", "cocina"], color: "#b09a5b" },
   piso: { id: "piso", label: "Piso", areas: ["piso"], color: "#5a7a4d" },
   barra: { id: "barra", label: "Barra", areas: ["barra"], color: "#a14e3a" },

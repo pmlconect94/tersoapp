@@ -1,5 +1,6 @@
 import React, { useState, useEffect, useRef } from 'react';
 import TersoStore from './lib/store';
+import SupabaseRepo from './lib/supabaseRepo';
 import { supabase } from './lib/supabase';
 import { ToastProvider } from './components/ui';
 import Login from './components/Login';
@@ -15,6 +16,8 @@ const App = () => {
 
   // Cola simple para serializar saves contra Supabase
   const saveQueue = useRef(Promise.resolve());
+  // Evita doble-insert si el efecto de auto-creación se dispara dos veces
+  const pendingCreateRef = useRef(false);
 
   const setState = (updater) => {
     setStateRaw(prev => {
@@ -65,16 +68,31 @@ const App = () => {
     return () => { cancelled = true; };
   }, [authUser]);
 
-  // Vincular session.userId al usuario logueado cuando ya cargó el estado
+  // Vincular session.userId al usuario logueado.
+  // Si el correo aún no está en employees, crea un row con role='pending'.
   useEffect(() => {
     if (!authUser || !state || state.session?.userId) return;
-    const match = state.users.find(u =>
-      (u.email || '').toLowerCase() === (authUser.email || '').toLowerCase()
-    );
+    const email = (authUser.email || '').toLowerCase();
+    const match = state.users.find(u => (u.email || '').toLowerCase() === email);
     if (match) {
-      // local-only — no persistir session a Supabase
       setStateRaw(s => ({ ...s, session: { userId: match.id } }));
+      return;
     }
+    if (pendingCreateRef.current) return;
+    pendingCreateRef.current = true;
+    SupabaseRepo.createPendingEmployeeFromAuth(authUser)
+      .then(newUser => {
+        setStateRaw(s => ({
+          ...s,
+          users: [...s.users, newUser],
+          session: { userId: newUser.id },
+        }));
+      })
+      .catch(err => {
+        console.error('[App] failed to create pending employee:', err);
+        setLoadError(err.message || String(err));
+        pendingCreateRef.current = false;
+      });
   }, [authUser, state]);
 
   useEffect(() => {
@@ -85,12 +103,6 @@ const App = () => {
   const currentUser = state?.session
     ? state.users.find(u => u.id === state.session.userId)
     : null;
-
-  const onLogin = async (email, password) => {
-    const { data, error } = await supabase.auth.signInWithPassword({ email, password });
-    if (error) throw error;
-    return data.user;
-  };
 
   const onLogout = async () => {
     await supabase.auth.signOut();
@@ -110,7 +122,7 @@ const App = () => {
   if (!authUser) {
     return (
       <ToastProvider>
-        <Login onLogin={onLogin} />
+        <Login />
       </ToastProvider>
     );
   }
@@ -143,17 +155,37 @@ const App = () => {
   }
 
   if (!currentUser) {
+    // Estado intermedio: auth listo, state cargado, pero todavía estamos creando
+    // el row pending o vinculando la sesión. Mostramos el mismo loader.
     return (
-      <div style={{ padding: 32, fontFamily: "ui-monospace, monospace", color: "#3a2418", background: "#fef3e0", minHeight: "100vh", lineHeight: 1.6 }}>
-        <h2 style={{ fontSize: 24 }}>Tu correo no está registrado en el sistema</h2>
-        <div style={{ marginTop: 8, color: "#a04e2e" }}>
-          Iniciaste sesión como <strong>{authUser.email}</strong>, pero no encontramos un usuario activo con ese correo.
-          Pídele a un admin que te dé de alta.
+      <div style={{ height: "100vh", display: "flex", alignItems: "center", justifyContent: "center", background: "var(--t-cream)", flexDirection: "column", gap: 24 }}>
+        <img src="/assets/terso-mark.png" alt="" style={{ width: 64, opacity: 0.85, animation: "pulse 1.6s ease-in-out infinite" }} />
+        <div className="kana" style={{ color: "var(--t-muted)" }}>Preparando tu acceso</div>
+        <style>{`@keyframes pulse { 0%, 100% { opacity: 0.4; transform: scale(0.96); } 50% { opacity: 1; transform: scale(1); } }`}</style>
+      </div>
+    );
+  }
+
+  if (currentUser.role === 'pending') {
+    return (
+      <div style={{ minHeight: "100vh", background: "var(--t-cream)", display: "flex", alignItems: "center", justifyContent: "center", padding: 32 }}>
+        <div className="t-card fade-in" style={{ maxWidth: 460, padding: 32, textAlign: "center" }}>
+          <div style={{ width: 56, height: 56, margin: "0 auto 18px", borderRadius: "50%", background: "rgba(90,122,77,0.12)", display: "flex", alignItems: "center", justifyContent: "center", fontSize: 28 }}>
+            ✓
+          </div>
+          <div className="kana" style={{ color: "var(--t-muted)", marginBottom: 8 }}>ALTA EXITOSA</div>
+          <h2 style={{ fontSize: 22, fontWeight: 600, margin: "0 0 12px", letterSpacing: "-0.01em" }}>
+            Pendiente de asignar rol
+          </h2>
+          <p style={{ color: "var(--t-muted)", fontSize: 14, lineHeight: 1.6, margin: "0 0 24px" }}>
+            Tu cuenta <strong style={{ color: "var(--t-ink)" }}>{authUser.email}</strong> quedó registrada
+            correctamente. Un administrador te asignará tu rol antes de que puedas usar el sistema.
+          </p>
+          <button onClick={onLogout}
+            style={{ padding: "10px 22px", background: "#3a2418", color: "#fff", border: "none", borderRadius: 8, cursor: "pointer", fontSize: 13.5, fontWeight: 500 }}>
+            Cerrar sesión
+          </button>
         </div>
-        <button onClick={onLogout}
-          style={{ marginTop: 16, padding: "10px 18px", background: "#3a2418", color: "#fff", border: "none", borderRadius: 6, cursor: "pointer" }}>
-          Cerrar sesión
-        </button>
       </div>
     );
   }
