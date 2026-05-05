@@ -18,9 +18,12 @@ const Login = () => {
     setLoading(true);
     setError("");
     try {
+      // No pasamos redirectTo — Supabase usa el Site URL configurado en el dashboard.
+      // Esto evita problemas si el navegador está en un dominio de Vercel deployment
+      // (p.ej. tersoconnect-xxx-ddlpml2-6030s-projects.vercel.app) que no está
+      // whitelisted en Supabase Auth → URL Configuration.
       const { error } = await supabase.auth.signInWithOAuth({
         provider: 'google',
-        options: { redirectTo: window.location.origin },
       });
       if (error) throw error;
       // Redirect happens — no need to clear loading on success
